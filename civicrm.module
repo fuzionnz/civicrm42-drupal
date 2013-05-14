@@ -369,9 +369,49 @@ function civicrm_initialize() {
       drupal_add_css($path . '/filter.css');
     }
   }
-
+  setMySQLTimeZone();
   return TRUE;
 }
+/**
+ * Set the timezone in the Mysql Connection so timestamp fields render as the time in
+ * the appropriate timezone
+ */
+function setMySQLTimeZone(){
+  // get UFTImeZone should go on UFClasses -@ todo = move it
+  $timeZoneOffset = getUFTimeZone();
+  if($timeZoneOffset){
+    $sql = "SET time_zone = '$timeZoneOffset'";
+      CRM_Core_DAO::executequery($sql);
+    }
+   }
+
+  /**
+  * Determine relevant timezone giving priority to user settings & then site timezoe
+  * @return boolean|string
+  */
+  function getUFTimeZone(){
+    global $user;
+    if (variable_get('configurable_timezones', 1) && $user->uid && strlen($user->timezone)) {
+      $timezone = $user->timezone;
+    }
+    else {
+      $timezone = variable_get('date_default_timezone', null);
+    }
+    $tzObj = new DateTimeZone($timezone);
+    $dateTime = new DateTime("now", $tzObj);
+    $tz = $tzObj->getOffset($dateTime);
+
+    if(empty($tz)){
+       return false;
+    }
+
+    $timeZoneOffset = sprintf("%02d:%02d", $tz / 3600, ($tz/60)%60 );
+
+    if($timeZoneOffset > 0){
+      $timeZoneOffset = '+' . $timeZoneOffset;
+    }
+    return $timeZoneOffset;
+  }
 
 /**
  * Function to get the contact type
